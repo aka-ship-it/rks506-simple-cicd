@@ -7,7 +7,6 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    """Return the CI/CD demo homepage."""
     return """
     <!DOCTYPE html>
     <html>
