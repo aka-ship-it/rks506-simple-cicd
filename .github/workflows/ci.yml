@@ -29,3 +29,9 @@ jobs:
 
       - name: Run Pylint
         run: pylint --fail-under=9.0 app.py
+
+      - name: Run Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/python
