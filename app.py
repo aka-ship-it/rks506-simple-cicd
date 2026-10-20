@@ -1,26 +1,17 @@
-"""Simple Flask application for the RKS506 CI/CD project."""
+"""Flask application serving a browser Snake game."""
 
-from datetime import datetime
-from flask import Flask
+from flask import Flask, send_from_directory
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static")
 
 
 @app.route("/")
 def index():
-    """Return the CI/CD demo homepage."""
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    """Serve the game page."""
+    return send_from_directory(app.static_folder, "index.html")
 
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>CI/CD Demo</title>
-    </head>
-    <body>
-        <h1>Hello from RKS506!</h1>
-        <p>This is a learning project about CI/CD</p>
-        <p>Server time: {current_time}</p>
-    </body>
-    </html>
-    """
+
+@app.route("/health")
+def health():
+    """Health endpoint used by Docker and the pipeline."""
+    return {"status": "ok"}
