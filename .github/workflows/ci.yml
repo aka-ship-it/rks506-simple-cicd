@@ -44,18 +44,17 @@ jobs:
         run: docker build -t rks506-app:ci .
 
       - name: Scan image (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: rks506-app:ci
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
+        run: |
+          docker save rks506-app:ci -o image.tar
+          docker run --rm -v "$PWD:/work" -w /work aquasec/trivy:0.69.3 \
+            image --input image.tar \
+            --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1
 
       - name: Run container and smoke test
         run: |
           docker run -d --name test -p 5000:5000 rks506-app:ci
           for i in $(seq 1 15); do
-            curl -fs http://localhost:5000/ | grep -q "Hello from RKS506" && exit 0
+            curl -fs http://localhost:5000/ | grep -q "Snake" && exit 0
             sleep 2
           done
           docker logs test
