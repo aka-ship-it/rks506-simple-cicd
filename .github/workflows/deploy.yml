@@ -1,0 +1,70 @@
+name: Deploy to staging
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, staging]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build candidate image
+        run: docker build -t rks506-app:candidate .
+
+      - name: Scan image (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: rks506-app:candidate
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Test candidate before touching production
+        run: |
+          docker rm -f rks506-candidate 2>/dev/null || true
+          docker run -d --name rks506-candidate -p 5001:5000 rks506-app:candidate
+          for i in $(seq 1 15); do
+            if curl -fs http://localhost:5001/ | grep -q "Hello from RKS506"; then
+              docker rm -f rks506-candidate
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs rks506-candidate
+          docker rm -f rks506-candidate
+          exit 1
+
+      - name: Promote and deploy
+        run: |
+          # keep the previous image for rollback
+          docker tag rks506-app:latest rks506-app:previous 2>/dev/null || true
+          docker tag rks506-app:candidate rks506-app:latest
+          docker rm -f rks506-app 2>/dev/null || true
+          docker run -d --name rks506-app \
+            --restart unless-stopped \
+            -p 80:5000 \
+            --read-only --tmpfs /tmp \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            rks506-app:latest
+
+      - name: Verify deployment (rollback on failure)
+        run: |
+          for i in $(seq 1 15); do
+            if curl -fs http://localhost:80/ | grep -q "Hello from RKS506"; then
+              echo "Deployed OK"
+              docker image prune -f
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Deploy failed, rolling back"
+          docker logs rks506-app
+          docker rm -f rks506-app
+          docker run -d --name rks506-app --restart unless-stopped -p 80:5000 \
+            --read-only --tmpfs /tmp --cap-drop ALL \
+            --security-opt no-new-privileges rks506-app:previous
+          exit 1
+
