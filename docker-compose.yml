@@ -1,0 +1,17 @@
+services:
+  app:
+    image: rks506-app:${TAG:?TAG is required}
+    ports:
+      - "${PORT:?PORT is required}:5000"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    pids_limit: 100
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+
