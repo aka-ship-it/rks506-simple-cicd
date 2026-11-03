@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minesweeper</title>
+<style>
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column;
+         align-items:center; justify-content:center; background:#111; color:#eee;
+         font-family:sans-serif; }
+  a { color:#4caf50; }
+  #grid { display:grid; grid-template-columns:repeat(9,36px); gap:2px; }
+  .c { width:36px; height:36px; background:#333; border:0; color:#eee;
+       font-weight:bold; font-size:16px; cursor:pointer; }
+  .c.open { background:#1b1b1b; cursor:default; }
+  .c.mine { background:#e53935; }
+  button.ctl { margin:.5rem; padding:.4rem .8rem; }
+</style>
+</head>
+<body>
+<a href="/">← Library</a>
+<h1>Minesweeper</h1>
+<p id="msg"></p>
+<div id="grid"></div>
+<div>
+  <button class="ctl" id="flagbtn">Flag mode: off</button>
+  <button class="ctl" id="newbtn">New game</button>
+</div>
+<script>
+const N = 9, M = 10;
+let cells, over, flags, started, flagMode = false;
+const grid = document.getElementById("grid"), msg = document.getElementById("msg");
+
+function setMsg(t) { msg.textContent = t; }
+function reset() {
+  cells = []; over = false; flags = 0; started = false; grid.innerHTML = "";
+  for (let i = 0; i < N * N; i++) {
+    const b = document.createElement("button");
+    b.className = "c";
+    b.onclick = () => click(i);
+    b.oncontextmenu = e => { e.preventDefault(); flag(i); };
+    grid.appendChild(b);
+    cells.push({el: b, mine: false, open: false, flag: false, n: 0});
+  }
+  setMsg("Mines left: " + M);
+}
+function nb(i) {
+  const x = i % N, y = Math.floor(i / N), r = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const a = x + dx, b = y + dy;
+    if ((dx || dy) && a >= 0 && b >= 0 && a < N && b < N) r.push(b * N + a);
+  }
+  return r;
+}
+function plant(safe) {
+  let p = 0;
+  while (p < M) {
+    const i = Math.floor(Math.random() * N * N);
+    if (i !== safe && !cells[i].mine) { cells[i].mine = true; p++; }
+  }
+  cells.forEach((c, i) => c.n = nb(i).filter(j => cells[j].mine).length);
+}
+function open(i) {
+  const c = cells[i];
+  if (c.open || c.flag) return;
+  c.open = true; c.el.classList.add("open");
+  if (c.mine) { c.el.classList.add("mine"); c.el.textContent = "*"; return; }
+  c.el.textContent = c.n || "";
+  if (!c.n) nb(i).forEach(open);
+}
+function click(i) {
+  if (over) return;
+  if (flagMode) { flag(i); return; }
+  if (!started) { started = true; plant(i); }
+  open(i);
+  if (cells[i].mine) {
+    over = true;
+    cells.forEach(c => { if (c.mine) { c.el.classList.add("mine"); c.el.textContent = "*"; } });
+    setMsg("Boom! Game over.");
+  } else if (cells.every(c => c.mine || c.open)) {
+    over = true; setMsg("You win!");
+  }
+}
+function flag(i) {
+  const c = cells[i];
+  if (over || c.open) return;
+  c.flag = !c.flag; flags += c.flag ? 1 : -1;
+  c.el.textContent = c.flag ? "F" : "";
+  setMsg("Mines left: " + (M - flags));
+}
+document.getElementById("newbtn").onclick = reset;
+document.getElementById("flagbtn").onclick = e => {
+  flagMode = !flagMode;
+  e.target.textContent = "Flag mode: " + (flagMode ? "on" : "off");
+};
+reset();
+</script>
+</body>
+</html>
+
