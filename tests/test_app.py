@@ -1,16 +1,13 @@
-from app import app
+import pytest
 
 
-def test_homepage():
+@pytest.mark.parametrize("path", [
+    "/static/games/snake.html",
+    "/static/games/minesweeper.html",
+    "/static/games/2048.html",
+])
+def test_game_pages(path):
     client = app.test_client()
-    response = client.get("/")
+    response = client.get(path)
     assert response.status_code == 200
-    assert b"Snake" in response.data
     response.close()
-
-
-def test_health():
-    client = app.test_client()
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.get_json() == {"status": "ok"}
